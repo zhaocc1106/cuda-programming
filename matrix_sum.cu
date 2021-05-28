@@ -1,6 +1,28 @@
-#include <stdio.h>
+#include <iostream>
 
 #include "cuda_start.h"
+
+// 检查两个float数组是否相同
+void checkResult(float *hostRef, float *gpuRef, const int N) {
+  double epsilon = 1.0E-8; // 错误容忍度
+  for (int i = 0; i < N; i++) {
+    if (abs(hostRef[i] - gpuRef[i]) > epsilon) {
+      printf("Results don\'t match!\n");
+      printf("%f(hostRef[%d] )!= %f(gpuRef[%d])\n", hostRef[i], i, gpuRef[i], i);
+      return;
+    }
+  }
+  printf("Check result success!\n");
+}
+
+// 初始化数据
+void initialData(float *ip, int size) {
+  time_t t;
+  srand((unsigned) time(&t));
+  for (int i = 0; i < size; i++) {
+    ip[i] = (float) (rand() & 0xffff) / 1000.0f;
+  }
+}
 
 //CPU对照组，用于对比加速比
 void sumMatrix2DonCPU(float *MatA, float *MatB, float *MatC, int nx, int ny) {
@@ -18,7 +40,7 @@ void sumMatrix2DonCPU(float *MatA, float *MatB, float *MatC, int nx, int ny) {
 }
 
 //核函数，每一个线程计算矩阵中的一个元素。
-__global__ void sumMatrix(float *MatA, float *MatB, float *MatC, int nx, int ny) {
+__global__ void sumMatrix(const float *MatA, const float *MatB, float *MatC, int nx, int ny) {
   int ix = threadIdx.x + blockDim.x * blockIdx.x;
   int iy = threadIdx.y + blockDim.y * blockIdx.y;
   int idx = ix + iy * ny;
@@ -30,7 +52,7 @@ __global__ void sumMatrix(float *MatA, float *MatB, float *MatC, int nx, int ny)
 //主函数
 int main(int argc, char **argv) {
   //设备初始化
-  printf("strating...\n");
+  printf("starting...\n");
   initDevice(0);
 
   //输入二维矩阵，4096*4096，单精度浮点型。
@@ -47,9 +69,9 @@ int main(int argc, char **argv) {
   initialData(B_host, nx * ny);
 
   //cudaMalloc，开辟设备内存
-  float *A_dev = NULL;
-  float *B_dev = NULL;
-  float *C_dev = NULL;
+  float *A_dev = nullptr;
+  float *B_dev = nullptr;
+  float *C_dev = nullptr;
   CHECK(cudaMalloc((void **) &A_dev, nBytes));
   CHECK(cudaMalloc((void **) &B_dev, nBytes));
   CHECK(cudaMalloc((void **) &C_dev, nBytes));

@@ -1,5 +1,9 @@
 #ifndef CUDASTART_H
 #define CUDASTART_H
+
+#include <ctime>
+#include <sys/time.h>
+
 #define CHECK(call)\
 {\
   const cudaError_t error=call;\
@@ -11,46 +15,34 @@
   }\
 }
 
-#include <time.h>
-#ifdef _WIN32
-#	include <windows.h>
-#else
-#	include <sys/time.h>
-#endif
-
 double cpuSecond() {
-  struct timeval tp;
-  gettimeofday(&tp, NULL);
+  struct timeval tp{};
+  gettimeofday(&tp, nullptr);
   return ((double) tp.tv_sec + (double) tp.tv_usec * 1e-6);
 
 }
 
-void initialData(float *ip, int size) {
-  time_t t;
-  srand((unsigned) time(&t));
-  for (int i = 0; i < size; i++) {
-    ip[i] = (float) (rand() & 0xffff) / 1000.0f;
-  }
-}
-
 void initDevice(int devNum) {
   int dev = devNum;
-  cudaDeviceProp deviceProp;
+  cudaDeviceProp deviceProp{};
   CHECK(cudaGetDeviceProperties(&deviceProp, dev));
-  printf("Using device %d: %s\n", dev, deviceProp.name);
+  printf("Using device %d, name: %s, warpSize: %d, concurrentKernels: %d, totalConstMem: %zu, totalGlobalMem:"
+         " %zu, maxBlocksPerMultiProcessor: %d, maxThreadsPerMultiProcessor: %d, maxThreadsPerBlock %d, "
+         "globalL1CacheSupported: %d, localL1CacheSupported: %d, l2CacheSize: %d.\n",
+         dev,
+         deviceProp.name,
+         deviceProp.warpSize,
+         deviceProp.concurrentKernels,
+         deviceProp.totalConstMem,
+         deviceProp.totalGlobalMem,
+         deviceProp.maxBlocksPerMultiProcessor,
+         deviceProp.maxThreadsPerMultiProcessor,
+         deviceProp.maxThreadsPerBlock,
+         deviceProp.globalL1CacheSupported,
+         deviceProp.localL1CacheSupported,
+         deviceProp.l2CacheSize
+  );
   CHECK(cudaSetDevice(dev));
-
-}
-void checkResult(float *hostRef, float *gpuRef, const int N) {
-  double epsilon = 1.0E-8;
-  for (int i = 0; i < N; i++) {
-    if (abs(hostRef[i] - gpuRef[i]) > epsilon) {
-      printf("Results don\'t match!\n");
-      printf("%f(hostRef[%d] )!= %f(gpuRef[%d])\n", hostRef[i], i, gpuRef[i], i);
-      return;
-    }
-  }
-  printf("Check result success!\n");
 }
 
 #endif

@@ -4,7 +4,7 @@ project(cuda_programming CUDA)
 
 set(CMAKE_CUDA_STANDARD 14)
 
-add_executable(cuda_programming main.cu cuda_start.h)
+add_executable(cuda_programming matrix_sum.cu cuda_start.h)
 
 set_target_properties(
         cuda_programming
