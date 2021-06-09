@@ -27,8 +27,9 @@ void initDevice(int devNum) {
   cudaDeviceProp deviceProp{};
   CHECK(cudaGetDeviceProperties(&deviceProp, dev));
   printf("Using device %d, name: %s, warpSize: %d, concurrentKernels: %d, totalConstMem: %zu, totalGlobalMem:"
-         " %zu, maxBlocksPerMultiProcessor: %d, maxThreadsPerMultiProcessor: %d, maxThreadsPerBlock %d, "
-         "globalL1CacheSupported: %d, localL1CacheSupported: %d, l2CacheSize: %d.\n",
+         " %zu,\nmaxBlocksPerMultiProcessor: %d, maxThreadsPerMultiProcessor: %d, maxThreadsPerBlock %d, "
+         "globalL1CacheSupported: %d, localL1CacheSupported: %d,\nl2CacheSize: %d, persistingL2CacheMaxSize: %d, "
+         "accessPolicyMaxWindowSize: %d.\n",
          dev,
          deviceProp.name,
          deviceProp.warpSize,
@@ -40,7 +41,9 @@ void initDevice(int devNum) {
          deviceProp.maxThreadsPerBlock,
          deviceProp.globalL1CacheSupported,
          deviceProp.localL1CacheSupported,
-         deviceProp.l2CacheSize
+         deviceProp.l2CacheSize,
+         deviceProp.persistingL2CacheMaxSize,
+         deviceProp.accessPolicyMaxWindowSize
   );
   CHECK(cudaSetDevice(dev));
 }
