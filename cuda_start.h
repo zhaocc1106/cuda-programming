@@ -29,7 +29,7 @@ void initDevice(int devNum) {
   printf("Using device %d, name: %s, warpSize: %d, concurrentKernels: %d, totalConstMem: %zu, totalGlobalMem:"
          " %zu,\nmaxBlocksPerMultiProcessor: %d, maxThreadsPerMultiProcessor: %d, maxThreadsPerBlock %d, "
          "globalL1CacheSupported: %d, localL1CacheSupported: %d,\nl2CacheSize: %d, persistingL2CacheMaxSize: %d, "
-         "accessPolicyMaxWindowSize: %d.\n",
+         "accessPolicyMaxWindowSize: %d, concurrentKernels: %d, asyncEngineCount: %d.\n",
          dev,
          deviceProp.name,
          deviceProp.warpSize,
@@ -43,7 +43,9 @@ void initDevice(int devNum) {
          deviceProp.localL1CacheSupported,
          deviceProp.l2CacheSize,
          deviceProp.persistingL2CacheMaxSize,
-         deviceProp.accessPolicyMaxWindowSize
+         deviceProp.accessPolicyMaxWindowSize,
+         deviceProp.concurrentKernels,
+         deviceProp.asyncEngineCount
   );
   CHECK(cudaSetDevice(dev));
 }

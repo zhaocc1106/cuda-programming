@@ -17,3 +17,10 @@ set_target_properties(
         matrix_inner_product
         PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(async_stream_test async_stream_test.cu cuda_start.h)
+
+set_target_properties(
+        async_stream_test
+        PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON)
