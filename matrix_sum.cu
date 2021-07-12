@@ -1,3 +1,7 @@
+/**
+ * Cuda hello world，实现一个矩阵加法，并比较和cpu实现的耗时，发现矩阵较小时cpu可能快些，但较大后gpu快很多。
+ */
+
 #include <iostream>
 
 #include "cuda_start.h"

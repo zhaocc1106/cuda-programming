@@ -24,3 +24,10 @@ set_target_properties(
         async_stream_test
         PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(cuda_graph_test cuda_graph_test.cu cuda_start.h)
+
+set_target_properties(
+        cuda_graph_test
+        PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON)

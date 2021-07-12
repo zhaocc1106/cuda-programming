@@ -1,5 +1,6 @@
 /**
- * cuda实现矩阵内积算法，并尝试比较使用了共享内存和不使用共享内存两种方式，比较耗时发现使用共享内存延时低很多。
+ * 尝试cuda graph构建，实例化和运行，并和不通过graph直接运行的stream比较耗时。
+ * 发现有graph不一定比没有graph快，这块有疑问，可能是我的构建的graph比较简单？
  */
 
 #include <iostream>
@@ -128,75 +129,34 @@ __global__ void MatInnerProdKernelWithSharedMem(Matrix A, Matrix B, Matrix C) {
 /**
  * Matrix inner product in gpu. Matrix dimensions are assumed to be multiples of BLOCK_SIZE
  * @param a: Matrix a.
+ * @param g_a: Matrix a in gpu.
  * @param b: Matrix b.
+ * @param g_b: Matrix b in gpu.
  * @param c: The matrix to save ab.
+ * @param g_c: The matrix c in gpu.
  * @param use_shared_mem: If use shared memory.
+ * @param stream: The cuda stream.
  */
-void MatInnerProdInGpu(const Matrix& a, const Matrix& b, Matrix& c, bool use_shared_mem) {
+void MatInnerProdInGpu(const Matrix& a, Matrix& g_a, const Matrix& b, Matrix& g_b, Matrix& c, Matrix& g_c,
+                       bool use_shared_mem, const cudaStream_t& stream) {
   /* Load mat a and b to gpu memory. */
-  Matrix g_a = {a.width, a.height, nullptr};
   size_t size = a.width * a.height * sizeof(double);
-  CHECK(cudaMalloc(&g_a.elements, size));
-  CHECK(cudaMemcpy(g_a.elements, a.elements, size, cudaMemcpyHostToDevice));
-  Matrix g_b = {b.width, b.height, nullptr};
+  CHECK(cudaMemcpyAsync(g_a.elements, a.elements, size, cudaMemcpyHostToDevice, stream));
   size = b.width * b.height * sizeof(double);
-  CHECK(cudaMalloc(&g_b.elements, size));
-  CHECK(cudaMemcpy(g_b.elements, b.elements, size, cudaMemcpyHostToDevice));
-
-  /* Alloc mat c in gpu memory. */
-  Matrix g_c = {b.width, a.height, nullptr};
-  size = g_c.width * g_c.height * sizeof(double);
-  CHECK(cudaMalloc(&g_c.elements, size));
+  CHECK(cudaMemcpyAsync(g_b.elements, b.elements, size, cudaMemcpyHostToDevice, stream));
 
   /* Invoke kernel function. */
   dim3 dim_block(BLOCK_SIZE, BLOCK_SIZE);
   dim3 dim_grid(g_c.width / dim_block.x, g_c.height / dim_block.y);
   if (use_shared_mem) {
-    MatInnerProdKernelWithSharedMem<<<dim_grid, dim_block>>>(g_a, g_b, g_c);
+    MatInnerProdKernelWithSharedMem<<<dim_grid, dim_block, 0, stream>>>(g_a, g_b, g_c);
   } else {
-    MatInnerProdKernel<<<dim_grid, dim_block>>>(g_a, g_b, g_c);
+    MatInnerProdKernel<<<dim_grid, dim_block, 0, stream>>>(g_a, g_b, g_c);
   }
 
   /* Copy mat c from gpu memory into cpu memory. */
-  c.width = g_c.width;
-  c.height = g_c.height;
   size = c.width * c.height * sizeof(double);
-  if (c.elements == nullptr) {
-    c.elements = (double*) malloc(size);
-  }
-  CHECK(cudaMemcpy(c.elements, g_c.elements, size, cudaMemcpyDeviceToHost));
-
-  /* Free gpu memory. */
-  CHECK(cudaFree(g_a.elements));
-  CHECK(cudaFree(g_b.elements));
-  CHECK(cudaFree(g_c.elements));
-}
-
-/*-----------------------------------Mat inner product in cpu.-----------------------------------*/
-
-/**
- * Matrix inner product in cpu.
- * @param a: Matrix a.
- * @param b: Matrix b.
- * @param c: The matrix to save ab.
- */
-void MatInnerProdInCpu(const Matrix& a, const Matrix& b, Matrix& c) {
-  c.width = b.width;
-  c.height = a.height;
-  size_t size = c.width * c.height * sizeof(double);
-  if (c.elements == nullptr) {
-    c.elements = (double*) malloc(size);
-  }
-
-  for (int row = 0; row < a.height; row++) {
-    for (int col = 0; col < b.width; col++) {
-      double c_element = 0;
-      for (int i = 0; i < a.width; i++) {
-        c_element += a.elements[row * a.width + i] * b.elements[i * b.width + col];
-      }
-      c.elements[row * c.width + col] = c_element;
-    }
-  }
+  CHECK(cudaMemcpyAsync(c.elements, g_c.elements, size, cudaMemcpyDeviceToHost, stream));
 }
 
 /* Initialize data by random. */
@@ -208,64 +168,81 @@ void InitialData(double* p, size_t size) {
   }
 }
 
-// Check calc result between cpu and gpu.
-void CheckResult(double* cpu_ref, double* gpu_ref, const int size) {
-  double epsilon = 1.0E-8; // 错误容忍度
-  for (int i = 0; i < size; i++) {
-    if (abs(cpu_ref[i] - gpu_ref[i]) > epsilon) {
-      printf("Results don\'t match!\n");
-      printf("%f(cpu_ref[%d] )!= %f(gpu_ref[%d])\n", cpu_ref[i], i, gpu_ref[i], i);
-      return;
-    }
-  }
-  printf("Check result success!\n");
-}
-
 int main(int argc, char** argv) {
   printf("starting...\n");
   initDevice(0);
 
   /* 假设矩阵的dim size为BLOCK_SIZE的整数倍，如果矩阵比较小，gpu计算速度并没有cpu快 */
   Matrix a = {1280, 640, nullptr};
+  Matrix g_a = {a.width, a.height, nullptr};
   Matrix b = {640, 2560, nullptr};
+  Matrix g_b = {b.width, b.height, nullptr};
+  Matrix c1 = {b.width, a.height, nullptr}; // C = A * B
+  Matrix g_c1 = {b.width, a.height, nullptr};
+  Matrix c2 = {b.width, a.height, nullptr};
+  Matrix g_c2 = {b.width, a.height, nullptr};
+
   size_t size_a = a.width * a.height * sizeof(double);
   size_t size_b = b.width * b.height * sizeof(double);
+  size_t size_c = c1.width * c1.height * sizeof(double);
+
+  /* CPU and GPU Malloc. */
   a.elements = (double*) malloc(size_a);
+  CHECK(cudaMalloc(&g_a.elements, size_a));
   b.elements = (double*) malloc(size_b);
+  CHECK(cudaMalloc(&g_b.elements, size_b));
+  c1.elements = (double*) malloc(size_c);
+  CHECK(cudaMalloc(&g_c1.elements, size_c));
+  c2.elements = (double*) malloc(size_c);
+  CHECK(cudaMalloc(&g_c2.elements, size_c));
 
   InitialData(a.elements, a.width * a.height);
   InitialData(b.elements, b.width * b.height);
 
-  Matrix c1 = {0, 0, nullptr};
-  Matrix c2 = {0, 0, nullptr};
-  Matrix c3 = {0, 0, nullptr};
-
-  double gpu_start = cpuSecond(); // Mark GPU start time
-  MatInnerProdInGpu(a, b, c1, false);
-  CHECK(cudaDeviceSynchronize());
-  double gpu_time = cpuSecond() - gpu_start;
-  printf("GPU Execution Time: %f sec\n", gpu_time); // GPU Execution Time: 0.061128 sec
-
-  double gpu_use_shared_mem_start = cpuSecond(); // Mark GPU with shared memory start time
-  MatInnerProdInGpu(a, b, c2, true);
-  CHECK(cudaDeviceSynchronize());
-  double gpu_use_shared_mem_time = cpuSecond() - gpu_use_shared_mem_start;
-  printf("GPU with shared memory Execution Time: %f sec\n", gpu_use_shared_mem_time); // GPU with shared memory Execution Time: 0.011619 sec
-
-  double cpu_start = cpuSecond(); // Mark CPU start time
-  MatInnerProdInCpu(a, b, c3);
-  double cpu_time = cpuSecond() - cpu_start;
-  printf("CPU Execution Time: %f sec\n", cpu_time); // CPU Execution Time: 1.684192 sec
-
-  CheckResult(c3.elements, c1.elements, c1.width * c1.height);
-  CheckResult(c3.elements, c2.elements, c2.width * c2.height);
-
-  if (c1.elements) {
-    free(c1.elements);
+  /* Test cost time of gpu loop op without graph. */
+  cudaStream_t stream;
+  CHECK(cudaStreamCreate(&stream));
+  double no_graph_start = cpuSecond();
+  for (int i = 0; i < 50; i++) {
+    MatInnerProdInGpu(a, g_a, b, g_b, c1, g_c1, true, stream);
+    CHECK(cudaStreamSynchronize(stream));
   }
-  if (c2.elements) {
-    free(c2.elements);
+  double no_graph_time = cpuSecond() - no_graph_start;
+  printf("GPU op loop with no graph Execution Time: %f sec\n", no_graph_time);
+  CHECK(cudaStreamDestroy(stream));
+
+  /* Test cost time of gpu loop op with graph. */
+  bool graph_created = false;
+  cudaGraph_t graph;
+  cudaGraphExec_t graph_exec;
+  cudaStream_t stream1;
+  CHECK(cudaStreamCreate(&stream1));
+  double with_graph_start = 0;
+  for (int i = 0; i < 50; i++) {
+    if (!graph_created) {
+      CHECK(cudaStreamBeginCapture(stream1, cudaStreamCaptureModeGlobal));
+      MatInnerProdInGpu(a, g_a, b, g_b, c2, g_c2, true, stream1);
+      CHECK(cudaStreamEndCapture(stream1, &graph));
+      CHECK(cudaGraphInstantiate(&graph_exec, graph, nullptr, nullptr, 0));
+      graph_created = true;
+      with_graph_start = cpuSecond();
+    }
+    CHECK(cudaGraphLaunch(graph_exec, stream1));
+    CHECK(cudaStreamSynchronize(stream1));
   }
+  double with_graph_time = cpuSecond() - with_graph_start;
+  printf("GPU op loop with graph Execution Time: %f sec\n", with_graph_time);
+  CHECK(cudaStreamDestroy(stream1));
+
+  /* CPU and GPU free. */
+  free(a.elements);
+  CHECK(cudaFree(g_a.elements));
+  free(b.elements);
+  CHECK(cudaFree(g_b.elements));
+  free(c1.elements);
+  CHECK(cudaFree(g_c1.elements));
+  free(c2.elements);
+  CHECK(cudaFree(g_c2.elements));
 
   cudaDeviceReset();
   return 0;

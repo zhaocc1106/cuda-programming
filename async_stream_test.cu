@@ -1,6 +1,6 @@
-//
-// Created by zhaocc on 2021/6/8.
-//
+/**
+ * 尝试使用stream方式实现多个stream并行执行，比较和串行执行的耗时，发现耗时会降低很多。
+ */
 
 #include <iostream>
 
@@ -273,7 +273,7 @@ int main(int argc, char** argv) {
   double same_stream_time = cpuSecond() - same_stream_start;
   printf("Gpu func execution with the same stream Execution Time: %f sec\n", same_stream_time);
 
-  /* Gpu func execution with the different stream. */
+  /* Gpu func execution with the different stream. More faster. */
   double async_stream_start = cpuSecond();
   for (int i = 0; i < 5; i++) {
     MatInnerProdInGpuWithStream(a, b, c2, true);
