@@ -1,6 +1,6 @@
 /**
  * 尝试cuda graph构建，实例化和运行，并和不通过graph直接运行的stream比较耗时。
- * 发现有graph不一定比没有graph快，这块有疑问，可能是我的构建的graph比较简单？
+ * 发现有graph基本上比没有graph要快一些。
  */
 
 #include <iostream>
@@ -137,8 +137,8 @@ __global__ void MatInnerProdKernelWithSharedMem(Matrix A, Matrix B, Matrix C) {
  * @param use_shared_mem: If use shared memory.
  * @param stream: The cuda stream.
  */
-void MatInnerProdInGpu(const Matrix& a, Matrix& g_a, const Matrix& b, Matrix& g_b, Matrix& c, Matrix& g_c,
-                       bool use_shared_mem, const cudaStream_t& stream) {
+void MatInnerProdInGpu(const Matrix& a, const Matrix& g_a, const Matrix& b, const Matrix& g_b, const Matrix& c,
+                       const Matrix& g_c, bool use_shared_mem, const cudaStream_t& stream) {
   /* Load mat a and b to gpu memory. */
   size_t size = a.width * a.height * sizeof(double);
   CHECK(cudaMemcpyAsync(g_a.elements, a.elements, size, cudaMemcpyHostToDevice, stream));
@@ -166,6 +166,19 @@ void InitialData(double* p, size_t size) {
   for (int i = 0; i < size; i++) {
     p[i] = (double) (rand() & 0xffff) / 1000.0f;
   }
+}
+
+// Check calc result between cpu and gpu.
+void CheckResult(double* cpu_ref, double* gpu_ref, const int size) {
+  double epsilon = 1.0E-8; // 错误容忍度
+  for (int i = 0; i < size; i++) {
+    if (abs(cpu_ref[i] - gpu_ref[i]) > epsilon) {
+      printf("Results don\'t match!\n");
+      printf("%f(cpu_ref[%d] )!= %f(gpu_ref[%d])\n", cpu_ref[i], i, gpu_ref[i], i);
+      return;
+    }
+  }
+  printf("Check result success!\n");
 }
 
 int main(int argc, char** argv) {
@@ -199,16 +212,28 @@ int main(int argc, char** argv) {
   InitialData(a.elements, a.width * a.height);
   InitialData(b.elements, b.width * b.height);
 
+  cudaEvent_t start, stop; // Used to calc the time cost.
+
   /* Test cost time of gpu loop op without graph. */
   cudaStream_t stream;
   CHECK(cudaStreamCreate(&stream));
-  double no_graph_start = cpuSecond();
+  CHECK(cudaEventCreate(&start));
+  CHECK(cudaEventCreate(&stop));
+
+  CHECK(cudaEventRecord(start, stream));
   for (int i = 0; i < 50; i++) {
     MatInnerProdInGpu(a, g_a, b, g_b, c1, g_c1, true, stream);
-    CHECK(cudaStreamSynchronize(stream));
+    // CHECK(cudaStreamSynchronize(stream));
   }
-  double no_graph_time = cpuSecond() - no_graph_start;
-  printf("GPU op loop with no graph Execution Time: %f sec\n", no_graph_time);
+  CHECK(cudaEventRecord(stop, stream));
+  CHECK(cudaEventSynchronize(stop));
+
+  float no_graph_time;
+  CHECK(cudaEventElapsedTime(&no_graph_time, start, stop));
+  printf("GPU op loop with no graph Execution Time: %f sec\n", (no_graph_time / 1000));
+
+  CHECK(cudaEventDestroy(start));
+  CHECK(cudaEventDestroy(stop));
   CHECK(cudaStreamDestroy(stream));
 
   /* Test cost time of gpu loop op with graph. */
@@ -217,7 +242,9 @@ int main(int argc, char** argv) {
   cudaGraphExec_t graph_exec;
   cudaStream_t stream1;
   CHECK(cudaStreamCreate(&stream1));
-  double with_graph_start = 0;
+  CHECK(cudaEventCreate(&start));
+  CHECK(cudaEventCreate(&stop));
+
   for (int i = 0; i < 50; i++) {
     if (!graph_created) {
       CHECK(cudaStreamBeginCapture(stream1, cudaStreamCaptureModeGlobal));
@@ -225,14 +252,22 @@ int main(int argc, char** argv) {
       CHECK(cudaStreamEndCapture(stream1, &graph));
       CHECK(cudaGraphInstantiate(&graph_exec, graph, nullptr, nullptr, 0));
       graph_created = true;
-      with_graph_start = cpuSecond();
+      CHECK(cudaEventRecord(start, stream));
     }
     CHECK(cudaGraphLaunch(graph_exec, stream1));
     CHECK(cudaStreamSynchronize(stream1));
   }
-  double with_graph_time = cpuSecond() - with_graph_start;
-  printf("GPU op loop with graph Execution Time: %f sec\n", with_graph_time);
+  CHECK(cudaEventRecord(stop, stream));
+  CHECK(cudaEventSynchronize(stop));
+
+  float with_graph_time;
+  CHECK(cudaEventElapsedTime(&with_graph_time, start, stop));
+  printf("GPU op loop with graph Execution Time: %f sec\n", with_graph_time / 1000);
+  CHECK(cudaEventDestroy(start));
+  CHECK(cudaEventDestroy(stop));
   CHECK(cudaStreamDestroy(stream1));
+
+  CheckResult(c1.elements, c2.elements, c1.height * c1.width);
 
   /* CPU and GPU free. */
   free(a.elements);
