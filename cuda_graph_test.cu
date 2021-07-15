@@ -223,7 +223,6 @@ int main(int argc, char** argv) {
   CHECK(cudaEventRecord(start, stream));
   for (int i = 0; i < 50; i++) {
     MatInnerProdInGpu(a, g_a, b, g_b, c1, g_c1, true, stream);
-    // CHECK(cudaStreamSynchronize(stream));
   }
   CHECK(cudaEventRecord(stop, stream));
   CHECK(cudaEventSynchronize(stop));
@@ -255,7 +254,6 @@ int main(int argc, char** argv) {
       CHECK(cudaEventRecord(start, stream));
     }
     CHECK(cudaGraphLaunch(graph_exec, stream1));
-    CHECK(cudaStreamSynchronize(stream1));
   }
   CHECK(cudaEventRecord(stop, stream));
   CHECK(cudaEventSynchronize(stop));
