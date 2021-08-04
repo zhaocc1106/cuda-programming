@@ -19,7 +19,6 @@ double cpuSecond() {
   struct timeval tp{};
   gettimeofday(&tp, nullptr);
   return ((double) tp.tv_sec + (double) tp.tv_usec * 1e-6);
-
 }
 
 void initDevice(int devNum) {
@@ -29,7 +28,9 @@ void initDevice(int devNum) {
   printf("Using device %d, name: %s, warpSize: %d, concurrentKernels: %d, totalConstMem: %zu, totalGlobalMem:"
          " %zu,\nmaxBlocksPerMultiProcessor: %d, maxThreadsPerMultiProcessor: %d, maxThreadsPerBlock %d, "
          "globalL1CacheSupported: %d, localL1CacheSupported: %d,\nl2CacheSize: %d, persistingL2CacheMaxSize: %d, "
-         "accessPolicyMaxWindowSize: %d, concurrentKernels: %d, asyncEngineCount: %d, unifiedAddressing: %d.\n",
+         "accessPolicyMaxWindowSize: %d, asyncEngineCount: %d, unifiedAddressing: %d.\n"
+         "multiProcessorCount: %d, compute capability: %d.%d, regsPerMultiprocessor: %d, regsPerBlock:%d"
+         ", sharedMemPerBlock: %zu, sharedMemPerMultiprocessor: %zu.\n",
          dev,
          deviceProp.name,
          deviceProp.warpSize,
@@ -44,9 +45,15 @@ void initDevice(int devNum) {
          deviceProp.l2CacheSize,
          deviceProp.persistingL2CacheMaxSize,
          deviceProp.accessPolicyMaxWindowSize,
-         deviceProp.concurrentKernels,
          deviceProp.asyncEngineCount,
-         deviceProp.unifiedAddressing
+         deviceProp.unifiedAddressing,
+         deviceProp.multiProcessorCount,
+         deviceProp.major,
+         deviceProp.minor,
+         deviceProp.regsPerMultiprocessor,
+         deviceProp.regsPerBlock,
+         deviceProp.sharedMemPerBlock,
+         deviceProp.sharedMemPerMultiprocessor
   );
   CHECK(cudaSetDevice(dev));
 }

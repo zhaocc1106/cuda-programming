@@ -46,12 +46,12 @@ typedef struct {
 } SubMatrix;
 
 // Get a sub matrix element
-__device__ double GetElement(const SubMatrix A, int row, int col) {
+__device__ double GetElement(const SubMatrix& A, int row, int col) {
   return A.elements[row * A.stride + col];
 }
 
 // Set a sub matrix element
-__device__ void SetElement(SubMatrix A, int row, int col,
+__device__ void SetElement(const SubMatrix& A, int row, int col,
                            double value) {
   A.elements[row * A.stride + col] = value;
 }
@@ -59,7 +59,7 @@ __device__ void SetElement(SubMatrix A, int row, int col,
 // Get the BLOCK_SIZExBLOCK_SIZE sub-matrix Asub of A that is
 // located col sub-matrices to the right and row sub-matrices down
 // from the upper-left corner of A
-__device__ SubMatrix GetSubMatrix(Matrix A, int row, int col) {
+__device__ SubMatrix GetSubMatrix(const Matrix& A, int row, int col) {
   SubMatrix sub;
   sub.width = BLOCK_SIZE;
   sub.height = BLOCK_SIZE;
