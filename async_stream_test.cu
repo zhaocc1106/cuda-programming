@@ -248,7 +248,7 @@ void CheckResult(double* cpu_ref, double* gpu_ref, const int size) {
 
 int main(int argc, char** argv) {
   printf("starting...\n");
-  initDevice(0);
+  InitDevice(0);
 
   /* 假设矩阵的dim size为BLOCK_SIZE的整数倍，如果矩阵比较小，gpu计算速度并没有cpu快 */
   Matrix a = {1280, 640, nullptr};
@@ -265,21 +265,21 @@ int main(int argc, char** argv) {
   Matrix c2 = {0, 0, nullptr};
 
   /* Gpu func execution with the same stream. */
-  double same_stream_start = cpuSecond();
+  double same_stream_start = CpuSecond();
   for (int i = 0; i < 5; i++) {
     MatInnerProdInGpu(a, b, c1, true);
   }
   CHECK(cudaDeviceSynchronize());
-  double same_stream_time = cpuSecond() - same_stream_start;
+  double same_stream_time = CpuSecond() - same_stream_start;
   printf("Gpu func execution with the same stream Execution Time: %f sec\n", same_stream_time);
 
   /* Gpu func execution with the different stream. More faster. */
-  double async_stream_start = cpuSecond();
+  double async_stream_start = CpuSecond();
   for (int i = 0; i < 5; i++) {
     MatInnerProdInGpuWithStream(a, b, c2, true);
   }
   CHECK(cudaDeviceSynchronize());
-  double async_stream_time = cpuSecond() - async_stream_start;
+  double async_stream_time = CpuSecond() - async_stream_start;
   printf("Gpu func execution with the async stream Execution Time: %f sec\n", async_stream_time);
 
   if (c1.elements) {

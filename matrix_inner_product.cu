@@ -29,6 +29,7 @@ __global__ void MatInnerProdKernel(Matrix a, Matrix b, Matrix c) {
   double c_element = 0;
   int row = blockIdx.y * blockDim.y + threadIdx.y; // The row num of element.
   int col = blockIdx.x * blockDim.x + threadIdx.x; // The col num of element.
+  printf("row: %d, col: %d\n", row, col);
   for (int i = 0; i < a.width; i++) {
     c_element += a.elements[row * a.width + i] * b.elements[i * b.width + col];
   }
@@ -223,11 +224,11 @@ void CheckResult(double* cpu_ref, double* gpu_ref, const int size) {
 
 int main(int argc, char** argv) {
   printf("starting...\n");
-  initDevice(0);
+  InitDevice(0);
 
   /* 假设矩阵的dim size为BLOCK_SIZE的整数倍，如果矩阵比较小，gpu计算速度并没有cpu快 */
-  Matrix a = {1280, 640, nullptr};
-  Matrix b = {640, 2560, nullptr};
+  Matrix a = {64, 64, nullptr};
+  Matrix b = {64, 64, nullptr};
   size_t size_a = a.width * a.height * sizeof(double);
   size_t size_b = b.width * b.height * sizeof(double);
   a.elements = (double*) malloc(size_a);
@@ -240,21 +241,21 @@ int main(int argc, char** argv) {
   Matrix c2 = {0, 0, nullptr};
   Matrix c3 = {0, 0, nullptr};
 
-  double gpu_start = cpuSecond(); // Mark GPU start time
+  double gpu_start = CpuSecond(); // Mark GPU start time
   MatInnerProdInGpu(a, b, c1, false);
   CHECK(cudaDeviceSynchronize());
-  double gpu_time = cpuSecond() - gpu_start;
+  double gpu_time = CpuSecond() - gpu_start;
   printf("GPU Execution Time: %f sec\n", gpu_time); // GPU Execution Time: 0.061128 sec
 
-  double gpu_use_shared_mem_start = cpuSecond(); // Mark GPU with shared memory start time
+  double gpu_use_shared_mem_start = CpuSecond(); // Mark GPU with shared memory start time
   MatInnerProdInGpu(a, b, c2, true);
   CHECK(cudaDeviceSynchronize());
-  double gpu_use_shared_mem_time = cpuSecond() - gpu_use_shared_mem_start;
+  double gpu_use_shared_mem_time = CpuSecond() - gpu_use_shared_mem_start;
   printf("GPU with shared memory Execution Time: %f sec\n", gpu_use_shared_mem_time); // GPU with shared memory Execution Time: 0.011619 sec
 
-  double cpu_start = cpuSecond(); // Mark CPU start time
+  double cpu_start = CpuSecond(); // Mark CPU start time
   MatInnerProdInCpu(a, b, c3);
-  double cpu_time = cpuSecond() - cpu_start;
+  double cpu_time = CpuSecond() - cpu_start;
   printf("CPU Execution Time: %f sec\n", cpu_time); // CPU Execution Time: 1.684192 sec
 
   CheckResult(c3.elements, c1.elements, c1.width * c1.height);

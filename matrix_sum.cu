@@ -57,7 +57,7 @@ __global__ void sumMatrix(const float *MatA, const float *MatB, float *MatC, int
 int main(int argc, char **argv) {
   //设备初始化
   printf("starting...\n");
-  initDevice(0);
+  InitDevice(0);
 
   //输入二维矩阵，4096*4096，单精度浮点型。
   int nx = 1 << 12;
@@ -90,19 +90,19 @@ int main(int argc, char **argv) {
   dim3 grid((nx - 1) / block.x + 1, (ny - 1) / block.y + 1);
 
   //测试GPU执行时间
-  double gpuStart = cpuSecond();
+  double gpuStart = CpuSecond();
   //将核函数放在线程网格中执行
   sumMatrix<<<grid, block>>>(A_dev, B_dev, C_dev, nx, ny);
 
   CHECK(cudaDeviceSynchronize());
-  double gpuTime = cpuSecond() - gpuStart;
+  double gpuTime = CpuSecond() - gpuStart;
   printf("GPU Execution Time: %f sec\n", gpuTime);
 
   //在CPU上完成相同的任务
   cudaMemcpy(C_from_gpu, C_dev, nBytes, cudaMemcpyDeviceToHost);
-  double cpuStart = cpuSecond();
+  double cpuStart = CpuSecond();
   sumMatrix2DonCPU(A_host, B_host, C_host, nx, ny);
-  double cpuTime = cpuSecond() - cpuStart;
+  double cpuTime = CpuSecond() - cpuStart;
   printf("CPU Execution Time: %f sec\n", cpuTime);
 
   //检查GPU与CPU计算结果是否相同

@@ -15,13 +15,13 @@
   }\
 }
 
-double cpuSecond() {
+double CpuSecond() {
   struct timeval tp{};
   gettimeofday(&tp, nullptr);
   return ((double) tp.tv_sec + (double) tp.tv_usec * 1e-6);
 }
 
-void initDevice(int devNum) {
+void InitDevice(int devNum) {
   int dev = devNum;
   cudaDeviceProp deviceProp{};
   CHECK(cudaGetDeviceProperties(&deviceProp, dev));

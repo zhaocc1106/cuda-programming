@@ -183,7 +183,7 @@ void CheckResult(double* cpu_ref, double* gpu_ref, const int size) {
 
 int main(int argc, char** argv) {
   printf("starting...\n");
-  initDevice(0);
+  InitDevice(0);
 
   /* 假设矩阵的dim size为BLOCK_SIZE的整数倍，如果矩阵比较小，gpu计算速度并没有cpu快 */
   Matrix a = {1280, 640, nullptr};

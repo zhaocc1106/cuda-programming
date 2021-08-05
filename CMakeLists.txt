@@ -40,3 +40,10 @@ set_target_properties(
         cuda_graph_test
         PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(merge_sort merge_sort.cu cuda_start.h)
+
+set_target_properties(
+        merge_sort
+        PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON)
