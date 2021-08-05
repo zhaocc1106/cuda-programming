@@ -29,7 +29,7 @@ __global__ void MatInnerProdKernel(Matrix a, Matrix b, Matrix c) {
   double c_element = 0;
   int row = blockIdx.y * blockDim.y + threadIdx.y; // The row num of element.
   int col = blockIdx.x * blockDim.x + threadIdx.x; // The col num of element.
-  printf("row: %d, col: %d\n", row, col);
+  // printf("row: %d, col: %d\n", row, col);
   for (int i = 0; i < a.width; i++) {
     c_element += a.elements[row * a.width + i] * b.elements[i * b.width + col];
   }
@@ -227,8 +227,8 @@ int main(int argc, char** argv) {
   InitDevice(0);
 
   /* 假设矩阵的dim size为BLOCK_SIZE的整数倍，如果矩阵比较小，gpu计算速度并没有cpu快 */
-  Matrix a = {64, 64, nullptr};
-  Matrix b = {64, 64, nullptr};
+  Matrix a = {1280, 640, nullptr};
+  Matrix b = {640, 2560, nullptr};
   size_t size_a = a.width * a.height * sizeof(double);
   size_t size_b = b.width * b.height * sizeof(double);
   a.elements = (double*) malloc(size_a);
