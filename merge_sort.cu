@@ -72,12 +72,13 @@ void MergeSortInGpu(float* data, int size) {
   CHECK(cudaMalloc(&dev_tmp, bytes_size));
   CHECK(cudaMemcpy(dev_data, data, bytes_size, cudaMemcpyHostToDevice));
 
-  dim3 blocks(512, 1, 1);
-  dim3 grids(128, 1, 1);
+  int block_size = 16;
 
   int sorted_size = 1; // 当前已经排好序的子数组长度
   while (sorted_size < size) {
-    MergeSortSubInGpu<<<grids, blocks>>>(dev_data, dev_tmp, sorted_size, size);
+    int need_threads_size = (size + sorted_size - 1) / sorted_size;
+    int grid_size = (need_threads_size + block_size - 1) / block_size;
+    MergeSortSubInGpu<<<grid_size, block_size>>>(dev_data, dev_tmp, sorted_size, size);
     CHECK(cudaMemcpy(dev_data, dev_tmp, bytes_size, cudaMemcpyDeviceToDevice));
     sorted_size *= 2;
   }

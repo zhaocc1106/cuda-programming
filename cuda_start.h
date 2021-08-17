@@ -30,7 +30,7 @@ void InitDevice(int devNum) {
          "globalL1CacheSupported: %d, localL1CacheSupported: %d,\nl2CacheSize: %d, persistingL2CacheMaxSize: %d, "
          "accessPolicyMaxWindowSize: %d, asyncEngineCount: %d, unifiedAddressing: %d.\n"
          "multiProcessorCount: %d, compute capability: %d.%d, regsPerMultiprocessor: %d, regsPerBlock:%d"
-         ", sharedMemPerBlock: %zu, sharedMemPerMultiprocessor: %zu.\n",
+         ", sharedMemPerBlock: %zu, sharedMemPerMultiprocessor: %zu, computeMode: %d.\n",
          dev,
          deviceProp.name,
          deviceProp.warpSize,
@@ -53,7 +53,8 @@ void InitDevice(int devNum) {
          deviceProp.regsPerMultiprocessor,
          deviceProp.regsPerBlock,
          deviceProp.sharedMemPerBlock,
-         deviceProp.sharedMemPerMultiprocessor
+         deviceProp.sharedMemPerMultiprocessor,
+         deviceProp.computeMode
   );
   CHECK(cudaSetDevice(dev));
 }
